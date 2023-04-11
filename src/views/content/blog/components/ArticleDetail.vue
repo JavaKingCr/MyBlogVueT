@@ -62,7 +62,8 @@
         </el-form-item>
 
         <el-form-item prop="content" style="margin-bottom: 30px;">
-          <Tinymce ref="editor" v-model="postForm.content" :height="400" />
+          <!-- <Tinymce ref="editor" v-model="postForm.content" :height="400" /> -->
+          <mavon-editor v-model="postForm.showContent" @change="change" style="min-height: 400px" />
         </el-form-item>
       </div>
     </el-form>
@@ -76,11 +77,15 @@ import Sticky from "@/components/Sticky"; // 粘性header组件
 import { getBlogById, addBlog, updateBlog } from "@/api/content/blog";
 import { fetchTypeList } from "@/api/content/type";
 import { CommentDropdown, PlatformDropdown } from "./Dropdown";
+// 局部注册富文本组件
+import { mavonEditor } from 'mavon-editor'
+import 'mavon-editor/dist/css/index.css';
+import TurndownService from 'turndown';
 
 const defaultForm = {
   status: "draft",
   title: "", // 文章题目
-  content: "", // 文章内容
+  content: "", // 文章内容html
   outline: "", // 文章摘要
   backgroundImage: "", // 文章图片
   blId: undefined,
@@ -88,12 +93,13 @@ const defaultForm = {
   tagIds: [],
   commentabled: true,
   recommend: false,
-  published: false
+  published: false,
+  showContent: "" // 文章内容 markdown
 };
 
 export default {
   name: "ArticleDetail",
-  components: { Tinymce, MDinput, Sticky, CommentDropdown, PlatformDropdown },
+  components: { Tinymce, MDinput, Sticky, CommentDropdown, PlatformDropdown, mavonEditor },
   props: {
     isEdit: {
       type: Boolean,
@@ -154,6 +160,10 @@ export default {
       getBlogById(id)
         .then(response => {
           this.postForm = response;
+          const turndownService = new TurndownService();
+          // 这里的response.content为后端返回的html格式，转换成markdown格式
+          const markdown = turndownService.turndown(response.content);
+          this.postForm.showContent = markdown; //赋值回显操作
         })
         .catch(err => {
           console.log(err);
@@ -231,6 +241,12 @@ export default {
           return false;
         }
       });
+    },
+    // 所有操作都会被解析重新渲染
+    change (value, render) {
+      // render 为 markdown 解析后的结果(转化成了HTML格式）
+      // console.log(value, render, this.postForm)
+      this.postForm.content = render
     }
   }
 };
